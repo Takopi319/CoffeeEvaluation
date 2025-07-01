@@ -148,6 +148,13 @@ export default function InputScreen({ navigation, route }) {
         } catch (e) {
             Alert.alert('エラー', '保存に失敗しました');
         }
+        initialState.current = {
+            name,
+            memo,
+            isFavorite,
+            ratings: { ...ratings },
+        };
+
     };
 
     return (
@@ -175,9 +182,9 @@ export default function InputScreen({ navigation, route }) {
                                 maximumValue={5}
                                 step={0.5}
                                 value={ratings[cat]}
-                                  minimumTrackTintColor="#6f4e37"
-  maximumTrackTintColor="#ccc"
-  thumbTintColor="#6f4e37"
+                                minimumTrackTintColor="#6f4e37"
+                                maximumTrackTintColor="#ccc"
+                                thumbTintColor="#6f4e37"
                                 onValueChange={(value) => handleChange(cat, value)}
                             />
                         </View>
@@ -197,7 +204,7 @@ export default function InputScreen({ navigation, route }) {
             ) : (
                 <>
                     <Text style={styles.title}>{name || '（無題のコーヒー）'}</Text>
-                    <View style={{alignItems:'center'}}>
+                    <View style={{ alignItems: 'center' }}>
                         <RadarChart scores={ratings} />
                     </View>
                     {memo.trim().length > 0 && (
