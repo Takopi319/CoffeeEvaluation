@@ -68,22 +68,38 @@ export default function HistoryScreen({ navigation }) {
             setExpandedId(isExpanded ? null : item.id)
           }
           onLongPress={() => {
-navigation.navigate('Tabs', {
-  screen: '登録 / 編集',
-  params: {
-    editMode: true,
-    entry: item,
-  },
-});
+            navigation.navigate('Tabs', {
+              screen: '登録 / 編集',
+              params: {
+                editMode: true,
+                entry: item,
+              },
+            });
           }}
         >
           <View style={styles.itemHeader}>
             <Text style={styles.name}>{item.name || '（無題のコーヒー）'}</Text>
             {item.favorite && <Text style={styles.star}>⭐</Text>}
           </View>
-          <Text style={styles.date}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
+          <View style={styles.metaRow}>
+            {item.servingStyle && (
+              <View
+                style={[
+                  styles.servingBadge,
+                  {
+                    backgroundColor: item.servingStyle === 'Hot' ? '#e57373' : '#64b5f6',
+                  },
+                ]}
+              >
+                <Text style={styles.servingBadgeText}>
+                  {item.servingStyle === 'Hot' ? 'Hot' : 'Ice'}
+                </Text>
+              </View>
+            )}
+            <Text style={styles.date}>
+              {new Date(item.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
 
           {isExpanded && (
             <View style={styles.expandedRow}>
@@ -207,4 +223,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  servingBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  servingBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
 });

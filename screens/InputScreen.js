@@ -19,6 +19,7 @@ const categories = ['香り', '酸味', 'コク', '甘み', '後味'];
 export default function InputScreen({ navigation, route }) {
     const [step, setStep] = useState('input');
     const [name, setName] = useState('');
+    const [servingStyle, setServingStyle] = useState('Hot');
     const [ratings, setRatings] = useState({
         香り: 3,
         酸味: 3,
@@ -31,7 +32,7 @@ export default function InputScreen({ navigation, route }) {
     const [editId, setEditId] = useState(null);
 
     const isFocused = useIsFocused();
-    const initialState = useRef({ name: '', memo: '', isFavorite: false, ratings: { ...ratings } });
+    const initialState = useRef({ name: '', servingStyle: '', memo: '', isFavorite: false, ratings: { ...ratings } });
 
     useEffect(() => {
         if (route?.params?.editMode && route?.params?.entry) {
@@ -41,8 +42,10 @@ export default function InputScreen({ navigation, route }) {
             setMemo(entry.memo);
             setIsFavorite(entry.favorite);
             setEditId(entry.id);
+            setServingStyle(entry.servingStyle || 'ホット');
             initialState.current = {
                 name: entry.name,
+                servingStyle: entry.servingStyle,
                 memo: entry.memo,
                 isFavorite: entry.favorite,
                 ratings: { ...entry.ratings },
@@ -50,6 +53,7 @@ export default function InputScreen({ navigation, route }) {
         } else {
             initialState.current = {
                 name: '',
+                servingStyle: 'Hot',
                 memo: '',
                 isFavorite: false,
                 ratings: { 香り: 3, 酸味: 3, コク: 3, 甘み: 3, 後味: 3 },
@@ -91,6 +95,7 @@ export default function InputScreen({ navigation, route }) {
         const init = initialState.current;
         return (
             name !== init.name ||
+            servingStyle !== init.servingStyle ||
             memo !== init.memo ||
             isFavorite !== init.isFavorite ||
             categories.some((key) => ratings[key] !== init.ratings[key])
@@ -99,6 +104,7 @@ export default function InputScreen({ navigation, route }) {
 
     const resetForm = () => {
         setName('');
+        setServingStyle('Hot');
         setMemo('');
         setIsFavorite(false);
         setRatings({ 香り: 3, 酸味: 3, コク: 3, 甘み: 3, 後味: 3 });
@@ -128,6 +134,7 @@ export default function InputScreen({ navigation, route }) {
         const newEntry = {
             id: editId ?? Date.now(),
             name,
+            servingStyle,
             ratings,
             memo,
             favorite: isFavorite,
@@ -151,6 +158,7 @@ export default function InputScreen({ navigation, route }) {
         initialState.current = {
             name,
             memo,
+            servingStyle,
             isFavorite,
             ratings: { ...ratings },
         };
@@ -173,6 +181,21 @@ export default function InputScreen({ navigation, route }) {
                         </Pressable>
                     </View>
 
+                    <View style={styles.toggleRow}>
+                        <Pressable
+                            style={[styles.toggleButton, servingStyle === 'Hot' && styles.selectedToggle]}
+                            onPress={() => setServingStyle('Hot')}
+                        >
+                            <Text style={styles.toggleText}>Hot</Text>
+                        </Pressable>
+                        <Pressable
+                            style={[styles.toggleButton, servingStyle === 'Ice' && styles.selectedToggle]}
+                            onPress={() => setServingStyle('Ice')}
+                        >
+                            <Text style={styles.toggleText}>Ice</Text>
+                        </Pressable>
+                    </View>
+
                     {categories.map((cat) => (
                         <View key={cat} style={styles.sliderRow}>
                             <Text style={styles.label}>{cat}：{ratings[cat]}</Text>
@@ -190,7 +213,6 @@ export default function InputScreen({ navigation, route }) {
                         </View>
                     ))}
 
-                    <Text style={styles.label}>メモ</Text>
                     <TextInput
                         style={styles.memoInput}
                         placeholder="自由にメモを書いてください"
@@ -281,4 +303,26 @@ const styles = StyleSheet.create({
         padding: 8,
         borderRadius: 6,
     },
+    toggleRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginBottom: 20,
+        gap: 12,
+    },
+    toggleButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#6f4e37',
+        backgroundColor: '#fff',
+    },
+    selectedToggle: {
+        backgroundColor: '#6f4e37',
+    },
+    toggleText: {
+        color: '#3e2723',
+        fontSize: 16,
+    },
+
 });
