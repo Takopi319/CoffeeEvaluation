@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import RadarChart from '../components/RadarChart';
+import { FontAwesome } from '@expo/vector-icons';
 
 export default function HistoryScreen({ navigation }) {
   const [history, setHistory] = useState([]);
@@ -58,6 +59,16 @@ export default function HistoryScreen({ navigation }) {
     </Pressable>
   );
 
+  const handleEdit = (item) => {
+    navigation.navigate('Tabs', {
+      screen: '登録 / 編集',
+      params: {
+        editMode: true,
+        entry: item,
+      },
+    });
+  };
+
   const renderItem = ({ item }) => {
     const isExpanded = item.id === expandedId;
     return (
@@ -68,18 +79,12 @@ export default function HistoryScreen({ navigation }) {
             setExpandedId(isExpanded ? null : item.id)
           }
           onLongPress={() => {
-            navigation.navigate('Tabs', {
-              screen: '登録 / 編集',
-              params: {
-                editMode: true,
-                entry: item,
-              },
-            });
+            handleEdit(item);
           }}
         >
           <View style={styles.itemHeader}>
             <Text style={styles.name}>{item.name || '（無題のコーヒー）'}</Text>
-            {item.favorite && <Text style={styles.star}>⭐</Text>}
+            {item.favorite && <FontAwesome name="star" size={20} color="#d4af37" />}
           </View>
           <View style={styles.metaRow}>
             {item.servingStyle && (
@@ -102,19 +107,31 @@ export default function HistoryScreen({ navigation }) {
           </View>
 
           {isExpanded && (
-            <View style={styles.expandedRow}>
-              <View style={styles.chartWrapper}>
-                <RadarChart scores={item.ratings} size={140} />
-              </View>
+            <View>
+              <View style={styles.expandedRow}>
+                <View style={styles.chartWrapper}>
+                  <RadarChart scores={item.ratings} size={140} />
+                </View>
 
-              <View style={styles.memoBox}>
-                {item.memo ? (
-                  <>
-                    <Text style={styles.memoText}>{item.memo}</Text>
-                  </>
-                ) : null}
+                <View style={styles.memoBox}>
+                  {item.memo ? (
+                    <>
+                      <Text style={styles.memoText}>{item.memo}</Text>
+                    </>
+                  ) : null}
+                </View>
+              </View>
+              <View style={styles.actionIcons}>
+                <Pressable onPress={() => handleEdit(item)}>
+                  <FontAwesome name="edit" size={20} color="#6f4e37" />
+                </Pressable>
+                <Pressable onPress={() => handleDelete(item.id)}>
+                  <FontAwesome name="trash" size={20} color="#6f4e37" />
+                </Pressable>
               </View>
             </View>
+
+
           )}
         </Pressable>
       </Swipeable>
@@ -173,6 +190,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 18,
+    width: '90%',
     fontWeight: '500',
     color: '#4e342e',
   },
@@ -240,5 +258,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-
+  actionIcons: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconText: {
+    fontSize: 13,
+  },
 });

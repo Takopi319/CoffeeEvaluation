@@ -13,6 +13,7 @@ import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import RadarChart from '../components/RadarChart';
+import { FontAwesome } from '@expo/vector-icons';
 
 const categories = ['香り', '酸味', 'コク', '甘み', '後味'];
 
@@ -165,7 +166,11 @@ export default function InputScreen({ navigation, route }) {
                     onChangeText={setName}
                 />
                 <Pressable onPress={() => setIsFavorite(!isFavorite)}>
-                    <Text style={styles.star}>{isFavorite ? '⭐' : '☆'}</Text>
+                    <FontAwesome
+                        style={styles.favoriteIcon}
+                        size={26}
+                        name={isFavorite ? 'star' : 'star-o'}
+                    />
                 </Pressable>
             </View>
 
@@ -232,7 +237,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     input: {
-        flex: 1,
+        width: '90%',
         height: 40,
         borderWidth: 1,
         borderColor: '#ccc',
@@ -240,9 +245,9 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         backgroundColor: '#fff',
     },
-    star: {
-        fontSize: 28,
-        marginLeft: 12,
+    favoriteIcon: {
+        color: "#d4af37",
+        marginLeft: 10,
     },
     sliderRow: {
         marginBottom: 16,
