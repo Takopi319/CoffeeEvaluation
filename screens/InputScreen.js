@@ -17,7 +17,6 @@ import RadarChart from '../components/RadarChart';
 const categories = ['香り', '酸味', 'コク', '甘み', '後味'];
 
 export default function InputScreen({ navigation, route }) {
-    const [step, setStep] = useState('input');
     const [name, setName] = useState('');
     const [servingStyle, setServingStyle] = useState('Hot');
     const [ratings, setRatings] = useState({
@@ -109,7 +108,6 @@ export default function InputScreen({ navigation, route }) {
         setIsFavorite(false);
         setRatings({ 香り: 3, 酸味: 3, コク: 3, 甘み: 3, 後味: 3 });
         setEditId(null);
-        setStep('input');
         initialState.current = {
             name: '',
             memo: '',
@@ -120,14 +118,6 @@ export default function InputScreen({ navigation, route }) {
 
     const handleChange = (key, value) => {
         setRatings((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const handleNext = () => {
-        setStep('result');
-    };
-
-    const handleBack = () => {
-        setStep('input');
     };
 
     const handleSave = async () => {
@@ -167,80 +157,59 @@ export default function InputScreen({ navigation, route }) {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            {step === 'input' ? (
-                <>
-                    <View style={styles.row}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="コーヒーの名前"
-                            value={name}
-                            onChangeText={setName}
-                        />
-                        <Pressable onPress={() => setIsFavorite(!isFavorite)}>
-                            <Text style={styles.star}>{isFavorite ? '⭐' : '☆'}</Text>
-                        </Pressable>
-                    </View>
+            <View style={styles.row}>
+                <TextInput
+                    style={styles.input}
+                    placeholder="コーヒーの名前"
+                    value={name}
+                    onChangeText={setName}
+                />
+                <Pressable onPress={() => setIsFavorite(!isFavorite)}>
+                    <Text style={styles.star}>{isFavorite ? '⭐' : '☆'}</Text>
+                </Pressable>
+            </View>
 
-                    <View style={styles.toggleRow}>
-                        <Pressable
-                            style={[styles.toggleButton, servingStyle === 'Hot' && styles.selectedToggle]}
-                            onPress={() => setServingStyle('Hot')}
-                        >
-                            <Text style={styles.toggleText}>Hot</Text>
-                        </Pressable>
-                        <Pressable
-                            style={[styles.toggleButton, servingStyle === 'Ice' && styles.selectedToggle]}
-                            onPress={() => setServingStyle('Ice')}
-                        >
-                            <Text style={styles.toggleText}>Ice</Text>
-                        </Pressable>
-                    </View>
+            <View style={styles.toggleRow}>
+                <Pressable
+                    style={[styles.toggleButton, servingStyle === 'Hot' && styles.selectedToggle]}
+                    onPress={() => setServingStyle('Hot')}
+                >
+                    <Text style={styles.toggleText}>Hot</Text>
+                </Pressable>
+                <Pressable
+                    style={[styles.toggleButton, servingStyle === 'Ice' && styles.selectedToggle]}
+                    onPress={() => setServingStyle('Ice')}
+                >
+                    <Text style={styles.toggleText}>Ice</Text>
+                </Pressable>
+            </View>
 
-                    {categories.map((cat) => (
-                        <View key={cat} style={styles.sliderRow}>
-                            <Text style={styles.label}>{cat}：{ratings[cat]}</Text>
-                            <Slider
-                                style={styles.slider}
-                                minimumValue={1}
-                                maximumValue={5}
-                                step={0.5}
-                                value={ratings[cat]}
-                                minimumTrackTintColor="#6f4e37"
-                                maximumTrackTintColor="#ccc"
-                                thumbTintColor="#6f4e37"
-                                onValueChange={(value) => handleChange(cat, value)}
-                            />
-                        </View>
-                    ))}
-
-                    <TextInput
-                        style={styles.memoInput}
-                        placeholder="自由にメモを書いてください"
-                        multiline
-                        value={memo}
-                        onChangeText={setMemo}
+            {categories.map((cat) => (
+                <View key={cat} style={styles.sliderRow}>
+                    <Text style={styles.label}>{cat}：{ratings[cat]}</Text>
+                    <Slider
+                        style={styles.slider}
+                        minimumValue={1}
+                        maximumValue={5}
+                        step={0.5}
+                        value={ratings[cat]}
+                        minimumTrackTintColor="#6f4e37"
+                        maximumTrackTintColor="#ccc"
+                        thumbTintColor="#6f4e37"
+                        onValueChange={(value) => handleChange(cat, value)}
                     />
+                </View>
+            ))}
 
-                    <Button title="次へ" onPress={handleNext} color="#6f4e37" />
-                </>
-            ) : (
-                <>
-                    <Text style={styles.title}>{name || '（無題のコーヒー）'}</Text>
-                    <View style={{ alignItems: 'center' }}>
-                        <RadarChart scores={ratings} />
-                    </View>
-                    {memo.trim().length > 0 && (
-                        <View style={{ marginTop: 16 }}>
-                            <Text style={styles.label}>メモ</Text>
-                            <Text style={styles.memoText}>{memo}</Text>
-                        </View>
-                    )}
-                    <Button title="保存する" onPress={handleSave} color="#6f4e37" />
-                    <View style={{ marginTop: 10 }}>
-                        <Button title="戻る" onPress={handleBack} color="#888" />
-                    </View>
-                </>
-            )}
+            <TextInput
+                style={styles.memoInput}
+                placeholder="自由にメモを書いてください"
+                multiline
+                value={memo}
+                onChangeText={setMemo}
+            />
+
+            <Button title="保存" onPress={handleSave} color="#6f4e37" />
         </ScrollView>
     );
 }
