@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import RadarChart from '../components/RadarChart';
 import { FontAwesome } from '@expo/vector-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 const categories = ['香り', '酸味', 'コク', '甘み', '後味'];
 
@@ -157,7 +158,8 @@ export default function InputScreen({ navigation, route }) {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
+        <KeyboardAwareScrollView>
+        <ScrollView contentContainerStyle={styles.container} automaticallyAdjustKeyboardInsets={true}>
             <View style={styles.row}>
                 <TextInput
                     style={styles.input}
@@ -212,10 +214,12 @@ export default function InputScreen({ navigation, route }) {
                 multiline
                 value={memo}
                 onChangeText={setMemo}
+                scrollEnabled={false}
             />
 
             <Button title="保存" onPress={handleSave} color="#6f4e37" />
         </ScrollView>
+        </KeyboardAwareScrollView>
     );
 }
 
