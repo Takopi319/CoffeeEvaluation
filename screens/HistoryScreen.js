@@ -14,19 +14,24 @@ import { Swipeable } from 'react-native-gesture-handler';
 import RadarChart from '../components/RadarChart';
 import { FontAwesome } from '@expo/vector-icons';
 import { filterHistory, sortHistory } from '../utils/historyFilter';
+import HistoryConditionsModal from '../components/HistoryConditionsModal';
 
 export default function HistoryScreen({ navigation }) {
   const [history, setHistory] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+
   const [searchText, setSearchText] = useState('');
 
-  // フィルタ
+  // フィルタ状態（画面側の正式な状態）
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [servingFilter, setServingFilter] = useState('all'); // 'all' | 'hot' | 'ice'
 
-  // ソート
+  // ソート状態
   const [sortKey, setSortKey] = useState('createdAt'); // 'createdAt' など
-  const [sortOrder, setSortOrder] = useState('desc');  // 'asc' | 'desc'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+
+  // ポップアップ表示フラグ
+  const [conditionsVisible, setConditionsVisible] = useState(false);
 
   const loadHistory = async () => {
     try {
@@ -41,11 +46,14 @@ export default function HistoryScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadHistory();
+
+      // タブ再表示時は条件をリセット（仕様どおり）
       setSearchText('');
       setFavoriteOnly(false);
       setServingFilter('all');
       setSortKey('createdAt');
       setSortOrder('desc');
+      setExpandedId(null);
     }, [])
   );
 
@@ -92,7 +100,7 @@ export default function HistoryScreen({ navigation }) {
     servingFilter,
   });
 
-  // ソート適用
+  // ソート
   const sortedHistory = sortHistory(filteredHistory, {
     sortKey,
     sortOrder,
@@ -104,16 +112,16 @@ export default function HistoryScreen({ navigation }) {
       <Swipeable renderRightActions={() => renderRightActions(item)}>
         <Pressable
           style={styles.item}
-          onPress={() =>
-            setExpandedId(isExpanded ? null : item.id)
-          }
+          onPress={() => setExpandedId(isExpanded ? null : item.id)}
           onLongPress={() => {
             handleEdit(item);
           }}
         >
           <View style={styles.itemHeader}>
             <Text style={styles.name}>{item.name || '（無題のコーヒー）'}</Text>
-            {item.favorite && <FontAwesome name="star" size={20} color="#d4af37" />}
+            {item.favorite && (
+              <FontAwesome name="star" size={20} color="#d4af37" />
+            )}
           </View>
           <View style={styles.metaRow}>
             {item.servingStyle && (
@@ -121,7 +129,8 @@ export default function HistoryScreen({ navigation }) {
                 style={[
                   styles.servingBadge,
                   {
-                    backgroundColor: item.servingStyle === 'Hot' ? '#e57373' : '#64b5f6',
+                    backgroundColor:
+                      item.servingStyle === 'Hot' ? '#e57373' : '#64b5f6',
                   },
                 ]}
               >
@@ -144,9 +153,7 @@ export default function HistoryScreen({ navigation }) {
 
                 <View style={styles.memoBox}>
                   {item.memo ? (
-                    <>
-                      <Text style={styles.memoText}>{item.memo}</Text>
-                    </>
+                    <Text style={styles.memoText}>{item.memo}</Text>
                   ) : null}
                 </View>
               </View>
@@ -165,19 +172,74 @@ export default function HistoryScreen({ navigation }) {
     );
   };
 
-  const sortOptions = [
-    { key: 'createdAt', label: '日付' },
-    { key: 'name', label: '名前' },
-    { key: 'aroma', label: '香り' },
-    { key: 'acidity', label: '酸味' },
-    { key: 'body', label: 'コク' },
-    { key: 'sweetness', label: '甘さ' },
-    { key: 'aftertaste', label: '後味' },
-  ];
+  const buildConditionsLabel = () => {
+    const keyLabelMap = {
+      createdAt: '日付',
+      name: '名前',
+      aroma: '香り',
+      acidity: '酸味',
+      body: 'コク',
+      sweetness: '甘さ',
+      aftertaste: '後味',
+    };
+
+    const sortLabel = keyLabelMap[sortKey] || '日付';
+    const orderSymbol = sortOrder === 'asc' ? '↑' : '↓';
+
+    const isDefault =
+      !favoriteOnly &&
+      servingFilter === 'all' &&
+      sortKey === 'createdAt' &&
+      sortOrder === 'desc';
+
+    // 初期値のときは「日付↓」だけ表示
+    if (isDefault) {
+      return `${sortLabel}${orderSymbol}`;
+    }
+
+    // それ以外のときはフィルタ条件も含めて表示
+    const parts = [];
+
+    if (favoriteOnly) {
+      parts.push('お気に入り');
+    }
+    if (servingFilter === 'hot') {
+      parts.push('Hot');
+    } else if (servingFilter === 'ice') {
+      parts.push('Ice');
+    }
+
+    const filterPart = parts.length > 0 ? parts.join('/') : '';
+
+    if (filterPart) {
+      return `${filterPart} / ${sortLabel}${orderSymbol}`;
+    }
+
+    // フィルタはかかっていないが、ソートキーだけ違う場合
+    return `${sortLabel}${orderSymbol}`;
+  };
+
+
+  const conditionsLabel = buildConditionsLabel();
+
+  const isDefaultConditions =
+    !favoriteOnly &&
+    servingFilter === 'all' &&
+    sortKey === 'createdAt' &&
+    sortOrder === 'desc';
+
+  const handleApplyConditions = (next) => {
+    setFavoriteOnly(next.favoriteOnly);
+    setServingFilter(next.servingFilter);
+    setSortKey(next.sortKey);
+    setSortOrder(next.sortOrder);
+    setExpandedId(null); // 条件変更後はいったん全て閉じる
+    setConditionsVisible(false);
+  };
 
   return (
     <View style={styles.container}>
-      {/* 検索欄 */}
+      {/* 検索欄＋条件ボタン */}
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
@@ -193,101 +255,31 @@ export default function HistoryScreen({ navigation }) {
             <Text style={styles.clearButtonText}>クリア</Text>
           </Pressable>
         )}
-      </View>
-
-      {/* フィルタ行 */}
-      <View style={styles.filterRow}>
         <Pressable
           style={[
-            styles.favoriteFilterButton,
-            favoriteOnly && styles.favoriteFilterButtonActive,
+            styles.conditionsButton,
+            isDefaultConditions
+              ? styles.conditionsButtonDefault
+              : styles.conditionsButtonActive,
           ]}
-          onPress={() => setFavoriteOnly((prev) => !prev)}
+          onPress={() => setConditionsVisible(true)}
         >
           <FontAwesome
-            name="star"
-            size={14}
-            color={favoriteOnly ? '#ffd54f' : '#8d6e63'}
-            style={{ marginRight: 4 }}
-          />
-          <Text
-            style={[
-              styles.favoriteFilterText,
-              favoriteOnly && styles.favoriteFilterTextActive,
-            ]}
-          >
-            お気に入りのみ
-          </Text>
-        </Pressable>
-
-        <View style={styles.servingFilterGroup}>
-          {[
-            { key: 'all', label: 'すべて' },
-            { key: 'hot', label: 'Hot' },
-            { key: 'ice', label: 'Ice' },
-          ].map((option) => (
-            <Pressable
-              key={option.key}
-              style={[
-                styles.servingFilterButton,
-                servingFilter === option.key && styles.servingFilterButtonActive,
-              ]}
-              onPress={() => setServingFilter(option.key)}
-            >
-              <Text
-                style={[
-                  styles.servingFilterText,
-                  servingFilter === option.key && styles.servingFilterTextActive,
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* ソート行 */}
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>並び替え</Text>
-        <View style={styles.sortKeyGroup}>
-          {sortOptions.map((option) => (
-            <Pressable
-              key={option.key}
-              style={[
-                styles.sortKeyButton,
-                sortKey === option.key && styles.sortKeyButtonActive,
-              ]}
-              onPress={() => setSortKey(option.key)}
-            >
-              <Text
-                style={[
-                  styles.sortKeyText,
-                  sortKey === option.key && styles.sortKeyTextActive,
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Pressable
-          style={styles.sortOrderButton}
-          onPress={() =>
-            setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-          }
-        >
-          <FontAwesome
-            name={sortOrder === 'asc' ? 'sort-amount-asc' : 'sort-amount-desc'}
-            size={14}
+            name="filter"
+            size={12}
             color="#fff"
             style={{ marginRight: 4 }}
           />
-          <Text style={styles.sortOrderText}>
-            {sortOrder === 'asc' ? '昇順' : '降順'}
+          <Text
+            style={styles.conditionsButtonText}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {conditionsLabel}
           </Text>
         </Pressable>
       </View>
+
 
       <FlatList
         data={sortedHistory}
@@ -300,6 +292,17 @@ export default function HistoryScreen({ navigation }) {
               : '検索条件・フィルタ条件に一致するコーヒーがありません。'}
           </Text>
         }
+      />
+
+      {/* フィルタ／ソート条件ポップアップ */}
+      <HistoryConditionsModal
+        visible={conditionsVisible}
+        onClose={() => setConditionsVisible(false)}
+        favoriteOnly={favoriteOnly}
+        servingFilter={servingFilter}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
+        onApply={handleApplyConditions}
       />
     </View>
   );
@@ -329,137 +332,36 @@ const styles = StyleSheet.create({
     color: '#4e342e',
   },
   clearButton: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: '#6f4e37',
   },
   clearButtonText: {
     color: '#fff',
-    fontSize: 12,
-  },
-
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  favoriteFilterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#d7ccc8',
-    backgroundColor: '#fbe9e7',
-  },
-  favoriteFilterButtonActive: {
-    backgroundColor: '#6f4e37',
-    borderColor: '#6f4e37',
-  },
-  favoriteFilterText: {
-    fontSize: 12,
-    color: '#5d4037',
-  },
-  favoriteFilterTextActive: {
-    color: '#fff',
-  },
-  servingFilterGroup: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    backgroundColor: '#efebe9',
-    overflow: 'hidden',
-  },
-  servingFilterButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  servingFilterButtonActive: {
-    backgroundColor: '#6f4e37',
-  },
-  servingFilterText: {
-    fontSize: 12,
-    color: '#5d4037',
-  },
-  servingFilterTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  sortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  sortLabel: {
-    fontSize: 12,
-    color: '#5d4037',
-    marginRight: 4,
-  },
-  sortKeyGroup: {
-    flexDirection: 'row',
-    flex: 1,
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  sortKeyButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d7ccc8',
-    backgroundColor: '#fefefe',
-  },
-  sortKeyButtonActive: {
-    backgroundColor: '#6f4e37',
-    borderColor: '#6f4e37',
-  },
-  sortKeyText: {
     fontSize: 11,
-    color: '#5d4037',
   },
-  sortKeyTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  sortOrderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  conditionsButton: {
     paddingHorizontal: 8,
     paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#6f4e37',
-  },
-  sortOrderText: {
-    fontSize: 11,
-    color: '#fff',
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#3e2723',
-  },
-  addButtonWrapper: {
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  addButton: {
-    backgroundColor: '#6f4e37',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
     borderRadius: 8,
+    maxWidth: 130,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  addButtonText: {
+  conditionsButtonDefault: {
+    backgroundColor: '#d7ccc8',
+  },
+  conditionsButtonActive: {
+    backgroundColor: '#6f4e37',
+  },
+  conditionsButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 10,
+    flexShrink: 1,
   },
+
+
   item: {
     backgroundColor: '#fff',
     padding: 12,
@@ -476,10 +378,6 @@ const styles = StyleSheet.create({
     width: '90%',
     fontWeight: '500',
     color: '#4e342e',
-  },
-  star: {
-    fontSize: 18,
-    marginLeft: 8,
   },
   date: {
     fontSize: 14,
@@ -498,11 +396,6 @@ const styles = StyleSheet.create({
   },
   memoBox: {
     flex: 1,
-  },
-  memoLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#3e2723',
   },
   memoText: {
     fontSize: 14,
@@ -547,8 +440,5 @@ const styles = StyleSheet.create({
     right: 6,
     flexDirection: 'row',
     gap: 8,
-  },
-  iconText: {
-    fontSize: 13,
   },
 });
