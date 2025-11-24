@@ -1,6 +1,8 @@
+// utils/historyFilter.js
+
 import { normalizeText } from './textNormalize';
 
-// 履歴一覧に対して、検索＋お気に入りフィルタ＋飲み方フィルタを適用する純粋関数
+// 検索＋お気に入り＋飲み方フィルタ
 // items: 履歴配列
 // options: { searchText, favoriteOnly, servingFilter: 'all' | 'hot' | 'ice' }
 export const filterHistory = (items, options) => {
@@ -16,14 +18,11 @@ export const filterHistory = (items, options) => {
     const name = normalizeText(item?.name || '');
     const memo = normalizeText(item?.memo || '');
 
-    // 検索条件
     const matchesSearch =
       keyword === '' || name.includes(keyword) || memo.includes(keyword);
 
-    // お気に入りフィルタ
     const matchesFavorite = !favoriteOnly || item?.favorite === true;
 
-    // 飲み方フィルタ
     let matchesServing = true;
     if (servingFilter === 'hot') {
       matchesServing = item?.servingStyle === 'Hot';
@@ -33,4 +32,61 @@ export const filterHistory = (items, options) => {
 
     return matchesSearch && matchesFavorite && matchesServing;
   });
+};
+
+// 並び替え
+// items: 配列
+// options: { sortKey, sortOrder }
+//   sortKey: 'createdAt' | 'name' | 'aroma' | 'acidity' | 'body' | 'sweetness' | 'aftertaste'
+//   sortOrder: 'asc' | 'desc'
+export const sortHistory = (items, options) => {
+  const { sortKey = 'createdAt', sortOrder = 'desc' } = options || {};
+
+  const list = [...(items || [])];
+  const dir = sortOrder === 'asc' ? 1 : -1;
+
+  const getValue = (item) => {
+    if (!item) return null;
+
+    switch (sortKey) {
+      case 'createdAt':
+        return item.createdAt ? new Date(item.createdAt).getTime() : null;
+      case 'name':
+        return (item.name || '').toString();
+      case 'aroma':
+      case 'acidity':
+      case 'body':
+      case 'sweetness':
+      case 'aftertaste': {
+        const ratings = item.ratings || {};
+        return typeof ratings[sortKey] === 'number' ? ratings[sortKey] : null;
+      }
+      default:
+        return null;
+    }
+  };
+
+  list.sort((a, b) => {
+    const aVal = getValue(a);
+    const bVal = getValue(b);
+
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    if (sortKey === 'name') {
+      return dir * aVal.localeCompare(bVal, 'ja');
+    }
+
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      if (aVal === bVal) return 0;
+      return aVal > bVal ? dir : -dir;
+    }
+
+    // createdAt など数値化したものはここに入る
+    if (aVal === bVal) return 0;
+    return aVal > bVal ? dir : -dir;
+  });
+
+  return list;
 };

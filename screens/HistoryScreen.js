@@ -6,22 +6,27 @@ import {
   StyleSheet,
   Pressable,
   Alert,
-  TextInput, // ★ 検索用に TextInput を追加
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import RadarChart from '../components/RadarChart';
 import { FontAwesome } from '@expo/vector-icons';
-import { normalizeText } from '../utils/textNormalize';
-import { filterHistory } from '../utils/historyFilter';
+import { filterHistory, sortHistory } from '../utils/historyFilter';
 
 export default function HistoryScreen({ navigation }) {
   const [history, setHistory] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
-  const [searchText, setSearchText] = useState(''); 
+  const [searchText, setSearchText] = useState('');
+
+  // フィルタ
   const [favoriteOnly, setFavoriteOnly] = useState(false);
-  const [servingFilter, setServingFilter] = useState('all');
+  const [servingFilter, setServingFilter] = useState('all'); // 'all' | 'hot' | 'ice'
+
+  // ソート
+  const [sortKey, setSortKey] = useState('createdAt'); // 'createdAt' など
+  const [sortOrder, setSortOrder] = useState('desc');  // 'asc' | 'desc'
 
   const loadHistory = async () => {
     try {
@@ -39,6 +44,8 @@ export default function HistoryScreen({ navigation }) {
       setSearchText('');
       setFavoriteOnly(false);
       setServingFilter('all');
+      setSortKey('createdAt');
+      setSortOrder('desc');
     }, [])
   );
 
@@ -78,10 +85,17 @@ export default function HistoryScreen({ navigation }) {
     });
   };
 
+  // 検索＋フィルタ
   const filteredHistory = filterHistory(history, {
     searchText,
     favoriteOnly,
     servingFilter,
+  });
+
+  // ソート適用
+  const sortedHistory = sortHistory(filteredHistory, {
+    sortKey,
+    sortOrder,
   });
 
   const renderItem = ({ item }) => {
@@ -145,17 +159,25 @@ export default function HistoryScreen({ navigation }) {
                 </Pressable>
               </View>
             </View>
-
-
           )}
         </Pressable>
       </Swipeable>
     );
   };
 
+  const sortOptions = [
+    { key: 'createdAt', label: '日付' },
+    { key: 'name', label: '名前' },
+    { key: 'aroma', label: '香り' },
+    { key: 'acidity', label: '酸味' },
+    { key: 'body', label: 'コク' },
+    { key: 'sweetness', label: '甘さ' },
+    { key: 'aftertaste', label: '後味' },
+  ];
+
   return (
     <View style={styles.container}>
-      {/* ★ 検索欄 */}
+      {/* 検索欄 */}
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
@@ -173,9 +195,8 @@ export default function HistoryScreen({ navigation }) {
         )}
       </View>
 
-      {/* ★ フィルタ行（お気に入り・飲み方） */}
+      {/* フィルタ行 */}
       <View style={styles.filterRow}>
-        {/* お気に入りフィルタ */}
         <Pressable
           style={[
             styles.favoriteFilterButton,
@@ -199,7 +220,6 @@ export default function HistoryScreen({ navigation }) {
           </Text>
         </Pressable>
 
-        {/* 飲み方フィルタ */}
         <View style={styles.servingFilterGroup}>
           {[
             { key: 'all', label: 'すべて' },
@@ -227,17 +247,57 @@ export default function HistoryScreen({ navigation }) {
         </View>
       </View>
 
-      {/* ★ data を history から filteredHistory に変更し、
-          空のときのメッセージを検索有無で出し分け */}
+      {/* ソート行 */}
+      <View style={styles.sortRow}>
+        <Text style={styles.sortLabel}>並び替え</Text>
+        <View style={styles.sortKeyGroup}>
+          {sortOptions.map((option) => (
+            <Pressable
+              key={option.key}
+              style={[
+                styles.sortKeyButton,
+                sortKey === option.key && styles.sortKeyButtonActive,
+              ]}
+              onPress={() => setSortKey(option.key)}
+            >
+              <Text
+                style={[
+                  styles.sortKeyText,
+                  sortKey === option.key && styles.sortKeyTextActive,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Pressable
+          style={styles.sortOrderButton}
+          onPress={() =>
+            setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+          }
+        >
+          <FontAwesome
+            name={sortOrder === 'asc' ? 'sort-amount-asc' : 'sort-amount-desc'}
+            size={14}
+            color="#fff"
+            style={{ marginRight: 4 }}
+          />
+          <Text style={styles.sortOrderText}>
+            {sortOrder === 'asc' ? '昇順' : '降順'}
+          </Text>
+        </Pressable>
+      </View>
+
       <FlatList
-        data={filteredHistory}
+        data={sortedHistory}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         ListEmptyComponent={
           <Text>
             {history.length === 0
               ? 'まだ履歴がありません。'
-              : '検索条件に一致するコーヒーがありません。'}
+              : '検索条件・フィルタ条件に一致するコーヒーがありません。'}
           </Text>
         }
       />
@@ -278,10 +338,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
   },
+
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     justifyContent: 'space-between',
     gap: 8,
   },
@@ -326,6 +387,56 @@ const styles = StyleSheet.create({
   servingFilterTextActive: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  sortLabel: {
+    fontSize: 12,
+    color: '#5d4037',
+    marginRight: 4,
+  },
+  sortKeyGroup: {
+    flexDirection: 'row',
+    flex: 1,
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  sortKeyButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d7ccc8',
+    backgroundColor: '#fefefe',
+  },
+  sortKeyButtonActive: {
+    backgroundColor: '#6f4e37',
+    borderColor: '#6f4e37',
+  },
+  sortKeyText: {
+    fontSize: 11,
+    color: '#5d4037',
+  },
+  sortKeyTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  sortOrderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#6f4e37',
+  },
+  sortOrderText: {
+    fontSize: 11,
+    color: '#fff',
   },
 
   title: {

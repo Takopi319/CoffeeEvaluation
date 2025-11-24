@@ -1,6 +1,6 @@
 // __tests__/historyFilter.test.js
 
-import { filterHistory } from '../utils/historyFilter';
+import { filterHistory, sortHistory } from '../utils/historyFilter';
 
 const sampleHistory = [
   {
@@ -9,6 +9,8 @@ const sampleHistory = [
     memo: '',
     favorite: true,
     servingStyle: 'Hot',
+    createdAt: '2025-01-03T10:00:00Z',
+    ratings: { aroma: 3, acidity: 4, body: 3, sweetness: 2, aftertaste: 3 },
   },
   {
     id: 2,
@@ -16,6 +18,8 @@ const sampleHistory = [
     memo: 'アイスで',
     favorite: false,
     servingStyle: 'Ice',
+    createdAt: '2025-01-01T10:00:00Z',
+    ratings: { aroma: 4, acidity: 5, body: 4, sweetness: 3, aftertaste: 4 },
   },
   {
     id: 3,
@@ -23,6 +27,8 @@ const sampleHistory = [
     memo: '',
     favorite: false,
     servingStyle: 'Hot',
+    createdAt: '2025-01-02T10:00:00Z',
+    ratings: { aroma: 2, acidity: 2, body: 3, sweetness: 4, aftertaste: 2 },
   },
   {
     id: 4,
@@ -30,6 +36,8 @@ const sampleHistory = [
     memo: 'うがんだとブレンド',
     favorite: true,
     servingStyle: 'Ice',
+    createdAt: '2025-01-04T10:00:00Z',
+    ratings: { aroma: 5, acidity: 3, body: 2, sweetness: 3, aftertaste: 5 },
   },
 ];
 
@@ -46,7 +54,7 @@ describe('filterHistory', () => {
 
   test('かな／カナ検索が効く（名前が対象）', () => {
     const result = filterHistory(sampleHistory, {
-      searchText: 'うが',  // ひらがな入力
+      searchText: 'うが', // ひらがな入力
       favoriteOnly: false,
       servingFilter: 'all',
     });
@@ -118,5 +126,74 @@ describe('filterHistory', () => {
     });
 
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('sortHistory', () => {
+  test('createdAt 降順で並ぶ', () => {
+    const result = sortHistory(sampleHistory, {
+      sortKey: 'createdAt',
+      sortOrder: 'desc',
+    });
+
+    // 日付的には id:4(1/4) > 1(1/3) > 3(1/2) > 2(1/1)
+    expect(result.map((x) => x.id)).toEqual([4, 1, 3, 2]);
+  });
+
+  test('createdAt 昇順で並ぶ', () => {
+    const result = sortHistory(sampleHistory, {
+      sortKey: 'createdAt',
+      sortOrder: 'asc',
+    });
+
+    expect(result.map((x) => x.id)).toEqual([2, 3, 1, 4]);
+  });
+
+  test('酸味(acidity) 昇順で並ぶ', () => {
+    const result = sortHistory(sampleHistory, {
+      sortKey: 'acidity',
+      sortOrder: 'asc',
+    });
+
+    // acidity: id3=2, id4=3, id1=4, id2=5
+    expect(result.map((x) => x.id)).toEqual([3, 4, 1, 2]);
+  });
+
+  test('名前昇順で並ぶ（単純な英字のケース）', () => {
+    const data = [
+      { id: 1, name: 'Bravo' },
+      { id: 2, name: 'Alpha' },
+      { id: 3, name: 'Charlie' },
+    ];
+
+    const result = sortHistory(data, {
+      sortKey: 'name',
+      sortOrder: 'asc',
+    });
+
+    expect(result.map((x) => x.id)).toEqual([2, 1, 3]); // Alpha, Bravo, Charlie
+  });
+
+  test('値が null のものは末尾に寄る', () => {
+    const data = [
+      {
+        id: 1,
+        name: '有効データ',
+        createdAt: '2025-01-01T10:00:00Z',
+        ratings: { aroma: 3 },
+      },
+      {
+        id: 2,
+        name: 'nullデータ',
+        // createdAt も ratings もなし
+      },
+    ];
+
+    const result = sortHistory(data, {
+      sortKey: 'createdAt',
+      sortOrder: 'asc',
+    });
+
+    expect(result.map((x) => x.id)).toEqual([1, 2]);
   });
 });
