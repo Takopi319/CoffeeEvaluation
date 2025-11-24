@@ -14,11 +14,14 @@ import { Swipeable } from 'react-native-gesture-handler';
 import RadarChart from '../components/RadarChart';
 import { FontAwesome } from '@expo/vector-icons';
 import { normalizeText } from '../utils/textNormalize';
+import { filterHistory } from '../utils/historyFilter';
 
 export default function HistoryScreen({ navigation }) {
   const [history, setHistory] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
-  const [searchText, setSearchText] = useState(''); // ★ 検索文字列の状態を追加
+  const [searchText, setSearchText] = useState(''); 
+  const [favoriteOnly, setFavoriteOnly] = useState(false);
+  const [servingFilter, setServingFilter] = useState('all');
 
   const loadHistory = async () => {
     try {
@@ -33,7 +36,9 @@ export default function HistoryScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadHistory();
-      setSearchText(''); // ★ 画面に戻ってきたときは検索文字列をリセット
+      setSearchText('');
+      setFavoriteOnly(false);
+      setServingFilter('all');
     }, [])
   );
 
@@ -73,14 +78,10 @@ export default function HistoryScreen({ navigation }) {
     });
   };
 
-  const filteredHistory = history.filter((item) => {
-    if (!searchText) return true;
-
-    const keyword = normalizeText(searchText);
-    const name = normalizeText(item.name || '');
-    const memo = normalizeText(item.memo || '');
-
-    return name.includes(keyword) || memo.includes(keyword);
+  const filteredHistory = filterHistory(history, {
+    searchText,
+    favoriteOnly,
+    servingFilter,
   });
 
   const renderItem = ({ item }) => {
@@ -154,7 +155,7 @@ export default function HistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ★ 検索欄を追加 */}
+      {/* ★ 検索欄 */}
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
@@ -170,6 +171,60 @@ export default function HistoryScreen({ navigation }) {
             <Text style={styles.clearButtonText}>クリア</Text>
           </Pressable>
         )}
+      </View>
+
+      {/* ★ フィルタ行（お気に入り・飲み方） */}
+      <View style={styles.filterRow}>
+        {/* お気に入りフィルタ */}
+        <Pressable
+          style={[
+            styles.favoriteFilterButton,
+            favoriteOnly && styles.favoriteFilterButtonActive,
+          ]}
+          onPress={() => setFavoriteOnly((prev) => !prev)}
+        >
+          <FontAwesome
+            name="star"
+            size={14}
+            color={favoriteOnly ? '#ffd54f' : '#8d6e63'}
+            style={{ marginRight: 4 }}
+          />
+          <Text
+            style={[
+              styles.favoriteFilterText,
+              favoriteOnly && styles.favoriteFilterTextActive,
+            ]}
+          >
+            お気に入りのみ
+          </Text>
+        </Pressable>
+
+        {/* 飲み方フィルタ */}
+        <View style={styles.servingFilterGroup}>
+          {[
+            { key: 'all', label: 'すべて' },
+            { key: 'hot', label: 'Hot' },
+            { key: 'ice', label: 'Ice' },
+          ].map((option) => (
+            <Pressable
+              key={option.key}
+              style={[
+                styles.servingFilterButton,
+                servingFilter === option.key && styles.servingFilterButtonActive,
+              ]}
+              onPress={() => setServingFilter(option.key)}
+            >
+              <Text
+                style={[
+                  styles.servingFilterText,
+                  servingFilter === option.key && styles.servingFilterTextActive,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {/* ★ data を history から filteredHistory に変更し、
@@ -196,14 +251,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f1ee',
     flex: 1,
   },
-  // ★ 検索用の行
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
     gap: 8,
   },
-  // ★ 検索入力欄のスタイル
   searchInput: {
     flex: 1,
     backgroundColor: '#fff',
@@ -215,7 +268,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4e342e',
   },
-  // ★ クリアボタン
   clearButton: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -225,6 +277,55 @@ const styles = StyleSheet.create({
   clearButtonText: {
     color: '#fff',
     fontSize: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  favoriteFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#d7ccc8',
+    backgroundColor: '#fbe9e7',
+  },
+  favoriteFilterButtonActive: {
+    backgroundColor: '#6f4e37',
+    borderColor: '#6f4e37',
+  },
+  favoriteFilterText: {
+    fontSize: 12,
+    color: '#5d4037',
+  },
+  favoriteFilterTextActive: {
+    color: '#fff',
+  },
+  servingFilterGroup: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    backgroundColor: '#efebe9',
+    overflow: 'hidden',
+  },
+  servingFilterButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  servingFilterButtonActive: {
+    backgroundColor: '#6f4e37',
+  },
+  servingFilterText: {
+    fontSize: 12,
+    color: '#5d4037',
+  },
+  servingFilterTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 
   title: {
