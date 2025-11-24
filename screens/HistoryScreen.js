@@ -6,16 +6,19 @@ import {
   StyleSheet,
   Pressable,
   Alert,
+  TextInput, // ★ 検索用に TextInput を追加
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import RadarChart from '../components/RadarChart';
 import { FontAwesome } from '@expo/vector-icons';
+import { normalizeText } from '../utils/textNormalize';
 
 export default function HistoryScreen({ navigation }) {
   const [history, setHistory] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+  const [searchText, setSearchText] = useState(''); // ★ 検索文字列の状態を追加
 
   const loadHistory = async () => {
     try {
@@ -30,6 +33,7 @@ export default function HistoryScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadHistory();
+      setSearchText(''); // ★ 画面に戻ってきたときは検索文字列をリセット
     }, [])
   );
 
@@ -68,6 +72,16 @@ export default function HistoryScreen({ navigation }) {
       },
     });
   };
+
+  const filteredHistory = history.filter((item) => {
+    if (!searchText) return true;
+
+    const keyword = normalizeText(searchText);
+    const name = normalizeText(item.name || '');
+    const memo = normalizeText(item.memo || '');
+
+    return name.includes(keyword) || memo.includes(keyword);
+  });
 
   const renderItem = ({ item }) => {
     const isExpanded = item.id === expandedId;
@@ -140,11 +154,37 @@ export default function HistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* ★ 検索欄を追加 */}
+      <View style={styles.searchRow}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="名前やメモで検索"
+          value={searchText}
+          onChangeText={setSearchText}
+        />
+        {searchText !== '' && (
+          <Pressable
+            style={styles.clearButton}
+            onPress={() => setSearchText('')}
+          >
+            <Text style={styles.clearButtonText}>クリア</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* ★ data を history から filteredHistory に変更し、
+          空のときのメッセージを検索有無で出し分け */}
       <FlatList
-        data={history}
+        data={filteredHistory}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
-        ListEmptyComponent={<Text>まだ履歴がありません。</Text>}
+        ListEmptyComponent={
+          <Text>
+            {history.length === 0
+              ? 'まだ履歴がありません。'
+              : '検索条件に一致するコーヒーがありません。'}
+          </Text>
+        }
       />
     </View>
   );
@@ -156,6 +196,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f1ee',
     flex: 1,
   },
+  // ★ 検索用の行
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  // ★ 検索入力欄のスタイル
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#d7ccc8',
+    fontSize: 14,
+    color: '#4e342e',
+  },
+  // ★ クリアボタン
+  clearButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#6f4e37',
+  },
+  clearButtonText: {
+    color: '#fff',
+    fontSize: 12,
+  },
+
   title: {
     fontSize: 24,
     fontWeight: 'bold',
